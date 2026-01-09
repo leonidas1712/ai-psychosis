@@ -136,13 +136,18 @@ def psychosis_eval(persona: str = "pattern_analyst", memory_length: int = 0):
     ]
     
     # Create custom task name for log file
+    # This name will be used in the log filename pattern
+    # Format will be: {timestamp}_{task_name}_{id}.eval
+    # You can customize the pattern using INSPECT_EVAL_LOG_FILE_PATTERN env var
+    # Available placeholders: {task}, {model}, {id}
+    # Example: export INSPECT_EVAL_LOG_FILE_PATTERN="{task}_{model}_{id}"
     task_name = f"{persona}_memory_{memory_length}"
     
     return Task(
         dataset=dataset,
         solver=multi_turn_conversation(persona, memory_length),
         scorer=None,  # Will grade separately with LLM judge later
-        name=task_name,  # Custom name for log file
+        name=task_name,  # Custom name for log file (used in filename pattern)
         metadata={
             "persona": persona,
             "memory_length": memory_length,

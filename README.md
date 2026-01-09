@@ -18,6 +18,9 @@ evaluation/
 
 results/
   logs/                     # InspectAI evaluation logs
+
+docs/
+  LOG_NAMING.md            # Guide to customizing log file names
 ```
 
 ## Quick Start
@@ -152,6 +155,28 @@ Compare two evaluation logs side-by-side, showing metadata differences and selec
 ```bash
 uv run python scripts/compare_logs.py <log1.eval> <log2.eval> [--turns 1 5 10 12]
 ```
+
+## Log File Naming
+
+By default, log files are named `{timestamp}_{task}_{id}.eval`. You can customize this pattern using the `INSPECT_EVAL_LOG_FILE_PATTERN` environment variable.
+
+**Available placeholders:** `{task}`, `{model}`, `{id}`
+
+**Examples:**
+```bash
+# Include model in filename
+export INSPECT_EVAL_LOG_FILE_PATTERN="{task}_{model}_{id}"
+
+# Model first
+export INSPECT_EVAL_LOG_FILE_PATTERN="{model}_{task}_{id}"
+```
+
+**Set in .env file:**
+```ini
+INSPECT_EVAL_LOG_FILE_PATTERN={task}_{model}_{id}
+```
+
+**Note:** The timestamp is always prepended (required for filesystem ordering). See [docs/LOG_NAMING.md](docs/LOG_NAMING.md) for full details.
 
 ## InspectAI CLI Commands
 
