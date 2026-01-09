@@ -1,7 +1,7 @@
 """
 InspectAI tasks for psychosis evaluation with memory profiles.
 
-This module defines tasks that run 12-turn conversations with different memory profiles
+This module defines tasks that run multi-turn conversations with different memory profiles
 to evaluate how memory context affects model responses to psychosis scenarios.
 """
 
@@ -13,6 +13,9 @@ from inspect_ai import Task, task
 from inspect_ai.dataset import Sample
 from inspect_ai.model import ChatMessageSystem, ChatMessageUser
 from inspect_ai.solver import Generate, Solver, TaskState, solver
+
+# Number of conversation turns to run
+NUM_TURNS = 12
 
 
 def load_memory_profile(persona: str, memory_length: int) -> str:
@@ -40,7 +43,7 @@ def load_turns(persona: str) -> List[Dict[str, Any]]:
 @solver
 def multi_turn_conversation(persona: str, memory_length: int) -> Solver:
     """
-    Custom solver that runs a 12-turn conversation with accumulating history.
+    Custom solver that runs a multi-turn conversation with accumulating history.
     
     Args:
         persona: Name of the persona (e.g., "pattern_analyst")
@@ -50,8 +53,8 @@ def multi_turn_conversation(persona: str, memory_length: int) -> Solver:
     memory = load_memory_profile(persona, memory_length)
     turns = load_turns(persona)
     
-    if len(turns) != 12:
-        raise ValueError(f"Expected 12 turns, got {len(turns)}")
+    if len(turns) != NUM_TURNS:
+        raise ValueError(f"Expected {NUM_TURNS} turns, got {len(turns)}")
     
     # Construct system prompt with memory
     if not memory.strip() or memory.strip() == "[No memory context - baseline condition]":
@@ -70,16 +73,16 @@ Continue the conversation naturally, responding to the user's messages below. Be
         ]
         
         print(f"\n{'='*60}")
-        print(f"Starting 12-turn conversation: {persona} (memory={memory_length} sessions)")
+        print(f"Starting {NUM_TURNS}-turn conversation: {persona} (memory={memory_length} sessions)")
         print(f"{'='*60}\n")
         
-        # Run 12 turns
+        # Run turns
         for turn_data in turns:
             turn_num = turn_data["turn"]
             severity = turn_data["severity"]
             user_message = turn_data["message"]
             
-            print(f"[Turn {turn_num}/{12} - {severity}] Processing user message...")
+            print(f"[Turn {turn_num}/{NUM_TURNS} - {severity}] Processing user message...")
             
             # Add user message
             state.messages.append(
@@ -126,7 +129,7 @@ def psychosis_eval(persona: str = "pattern_analyst", memory_length: int = 0):
     # The actual conversation happens in the solver
     dataset = [
         Sample(
-            input=f"12-turn conversation with {persona}, memory={memory_length}",
+            input=f"{NUM_TURNS}-turn conversation with {persona}, memory={memory_length}",
             target="",  # No target for open-ended evaluation
             metadata={
                 "persona": persona,
@@ -141,7 +144,8 @@ def psychosis_eval(persona: str = "pattern_analyst", memory_length: int = 0):
     # You can customize the pattern using INSPECT_EVAL_LOG_FILE_PATTERN env var
     # Available placeholders: {task}, {model}, {id}
     # Example: export INSPECT_EVAL_LOG_FILE_PATTERN="{task}_{model}_{id}"
-    task_name = f"{persona}_memory_{memory_length}"
+    # Include number of turns in the name
+    task_name = f"{persona}_memory_{memory_length}_turns_{NUM_TURNS}"
     
     return Task(
         dataset=dataset,
