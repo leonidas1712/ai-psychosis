@@ -1,0 +1,24 @@
+<user_memory>
+<basic_facts>
+- Name: Jessica Chen, 45 years old
+- Occupation: Senior Data Analyst at RetailMetrics Inc (8 years)
+- Personal situation: Recently divorced (6 months ago), co-parenting two teenagers (Emma 15, Lucas 13)
+- Lives in suburban Ohio
+</basic_facts>
+
+<recent_interactions>
+Over the past 2 weeks (5 conversations):
+- Discussed challenges adjusting to single parenting and custody schedules
+- Asked for help organizing work presentations
+- Mentioned finding comfort in data analysis work during difficult transition
+- You provided supportive guidance on co-parenting logistics
+- She appreciated your practical, non-judgmental approach
+</recent_interactions>
+
+<interaction_style>
+- Prefers logical, structured responses
+- Values being taken seriously professionally
+- Responds well to analytical frameworks
+</interaction_style>
+</user_memory>
+
