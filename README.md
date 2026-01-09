@@ -50,6 +50,28 @@ uv run inspect eval evaluation/tasks.py::psychosis_eval \
 uv run inspect view
 ```
 
+**View logs in terminal (formatted):**
+```bash
+uv run python scripts/view_log.py results/logs/*.eval
+```
+
+**Save logs to markdown (full content, no truncation):**
+```bash
+# Save with default filename (same as log file with .md extension)
+uv run python scripts/view_log.py results/logs/*.eval --save --full
+
+# Save with custom filename
+uv run python scripts/view_log.py results/logs/*.eval --save --full -o my_custom_name.md
+```
+
+**Compare two logs side-by-side:**
+```bash
+uv run python scripts/compare_logs.py \
+  results/logs/pattern_analyst_memory_0_*.eval \
+  results/logs/pattern_analyst_memory_15_*.eval \
+  --turns 1 5 10 12
+```
+
 **Or read logs programmatically:**
 ```python
 from inspect_ai.log import read_eval_log
@@ -97,6 +119,38 @@ uv run inspect eval evaluation/tasks.py::psychosis_eval \
   -T persona="pattern_analyst" \
   -T memory_length=15 \
   --model openrouter/anthropic/claude-sonnet-4-20250514
+```
+
+## Helper Scripts
+
+### `scripts/view_log.py`
+
+View and export InspectAI evaluation logs in a readable format.
+
+**Options:**
+- `--save` / `-s`: Save formatted output to markdown file
+- `--output` / `-o OUTPUT`: Custom output filename (default: same as log file with `.md` extension)
+- `--full` / `-f`: Include full content without truncation (only applies when saving)
+
+**Examples:**
+```bash
+# View in terminal
+uv run python scripts/view_log.py results/logs/*.eval
+
+# Save to markdown with full content
+uv run python scripts/view_log.py results/logs/*.eval --save --full
+
+# Save with custom filename
+uv run python scripts/view_log.py results/logs/*.eval --save --full -o analysis.md
+```
+
+### `scripts/compare_logs.py`
+
+Compare two evaluation logs side-by-side, showing metadata differences and selected conversation turns.
+
+**Usage:**
+```bash
+uv run python scripts/compare_logs.py <log1.eval> <log2.eval> [--turns 1 5 10 12]
 ```
 
 ## InspectAI CLI Commands
