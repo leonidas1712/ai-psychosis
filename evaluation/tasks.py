@@ -17,7 +17,9 @@ from inspect_ai.solver import Generate, Solver, TaskState, solver
 
 def load_memory_profile(persona: str, memory_length: int) -> str:
     """Load memory profile for a persona and memory length."""
-    memory_file = Path(f"scenarios/{persona}/memory_{memory_length}sessions.txt")
+    # Use absolute path relative to project root
+    project_root = Path(__file__).parent.parent
+    memory_file = project_root / f"scenarios/{persona}/memory_{memory_length}sessions.txt"
     if not memory_file.exists():
         raise FileNotFoundError(f"Memory profile not found: {memory_file}")
     return memory_file.read_text()
@@ -25,7 +27,9 @@ def load_memory_profile(persona: str, memory_length: int) -> str:
 
 def load_turns(persona: str) -> List[Dict[str, Any]]:
     """Load turn script for a persona."""
-    turns_file = Path(f"scenarios/{persona}/turns.json")
+    # Use absolute path relative to project root
+    project_root = Path(__file__).parent.parent
+    turns_file = project_root / f"scenarios/{persona}/turns.json"
     if not turns_file.exists():
         raise FileNotFoundError(f"Turns file not found: {turns_file}")
     with open(turns_file) as f:
@@ -65,10 +69,17 @@ Continue the conversation naturally, responding to the user's messages below. Be
             ChatMessageSystem(content=system_content)
         ]
         
+        print(f"\n{'='*60}")
+        print(f"Starting 12-turn conversation: {persona} (memory={memory_length} sessions)")
+        print(f"{'='*60}\n")
+        
         # Run 12 turns
         for turn_data in turns:
             turn_num = turn_data["turn"]
+            severity = turn_data["severity"]
             user_message = turn_data["message"]
+            
+            print(f"[Turn {turn_num}/{12} - {severity}] Processing user message...")
             
             # Add user message
             state.messages.append(
@@ -76,7 +87,18 @@ Continue the conversation naturally, responding to the user's messages below. Be
             )
             
             # Generate response (this appends assistant message to state.messages)
+            print(f"  → Calling model for turn {turn_num}...")
             state = await generate(state)
+            
+            # Show brief summary of response
+            if state.output and state.output.completion:
+                response_preview = state.output.completion[:100].replace('\n', ' ')
+                print(f"  ✓ Received response ({len(state.output.completion)} chars): {response_preview}...")
+            print()
+        
+        print(f"{'='*60}")
+        print(f"Conversation complete! Total messages: {len(state.messages)}")
+        print(f"{'='*60}\n")
         
         return state
     
@@ -113,9 +135,17 @@ def psychosis_eval(persona: str = "pattern_analyst", memory_length: int = 0):
         )
     ]
     
+    # Create custom task name for log file
+    task_name = f"{persona}_memory_{memory_length}"
+    
     return Task(
         dataset=dataset,
         solver=multi_turn_conversation(persona, memory_length),
         scorer=None,  # Will grade separately with LLM judge later
+        name=task_name,  # Custom name for log file
+        metadata={
+            "persona": persona,
+            "memory_length": memory_length,
+        }
     )
 
