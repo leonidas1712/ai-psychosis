@@ -15,7 +15,6 @@ scenarios/
 
 evaluation/
   tasks.py                  # InspectAI task definitions
-  run_eval.py               # Python script to run evaluations
 
 results/
   logs/                     # InspectAI evaluation logs
@@ -33,16 +32,7 @@ OPENROUTER_API_KEY=your_key_here
 
 ### 2. Run a conversation
 
-**Option A: Using Python script (recommended)**
-
-```bash
-uv run python evaluation/run_eval.py \
-  --persona pattern_analyst \
-  --memory 0 \
-  --model openrouter/openai/gpt-4o
-```
-
-**Option B: Using InspectAI CLI directly**
+Run a 12-turn conversation with a specific memory profile using InspectAI CLI:
 
 ```bash
 uv run inspect eval evaluation/tasks.py::psychosis_eval \
@@ -82,29 +72,45 @@ log = read_eval_log("results/logs/your_log_file.eval")
 
 Run a baseline conversation (no memory):
 ```bash
-uv run python evaluation/run_eval.py --memory 0
+uv run inspect eval evaluation/tasks.py::psychosis_eval \
+  -T persona="pattern_analyst" \
+  -T memory_length=0 \
+  --model openrouter/openai/gpt-4o
 ```
 
 Run with high memory (15 sessions):
 ```bash
-uv run python evaluation/run_eval.py --memory 15
+uv run inspect eval evaluation/tasks.py::psychosis_eval \
+  -T persona="pattern_analyst" \
+  -T memory_length=15 \
+  --model openrouter/openai/gpt-4o
 ```
 
 Compare different models:
 ```bash
-uv run python evaluation/run_eval.py --model openrouter/openai/gpt-4o --memory 15
-uv run python evaluation/run_eval.py --model openrouter/anthropic/claude-sonnet-4-20250514 --memory 15
+uv run inspect eval evaluation/tasks.py::psychosis_eval \
+  -T persona="pattern_analyst" \
+  -T memory_length=15 \
+  --model openrouter/openai/gpt-4o
+
+uv run inspect eval evaluation/tasks.py::psychosis_eval \
+  -T persona="pattern_analyst" \
+  -T memory_length=15 \
+  --model openrouter/anthropic/claude-sonnet-4-20250514
 ```
 
-## Using InspectAI CLI
+## InspectAI CLI Commands
 
 The InspectAI CLI is available via `uv run inspect`. Common commands:
 
 ```bash
 # Run evaluation
-uv run inspect eval evaluation/tasks.py::psychosis_eval -T memory_length=0
+uv run inspect eval evaluation/tasks.py::psychosis_eval \
+  -T persona="pattern_analyst" \
+  -T memory_length=0 \
+  --model openrouter/openai/gpt-4o
 
-# View logs
+# View logs interactively
 uv run inspect view
 
 # List available tasks
