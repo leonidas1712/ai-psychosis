@@ -35,7 +35,25 @@ OPENROUTER_API_KEY=your_key_here
 
 ### 2. Run a conversation
 
-Run a 12-turn conversation with a specific memory profile using InspectAI CLI:
+**Using the Python script (recommended):**
+
+```bash
+uv run python scripts/run_eval.py <persona> <memory_length> <model>
+```
+
+**Examples:**
+```bash
+# Memory 0 with Claude Sonnet 4
+uv run python scripts/run_eval.py pattern_analyst 0 openrouter/anthropic/claude-sonnet-4-20250514
+
+# Memory 15 with Claude Sonnet 4
+uv run python scripts/run_eval.py pattern_analyst 15 openrouter/anthropic/claude-sonnet-4-20250514
+
+# Memory 0 with GPT-4o
+uv run python scripts/run_eval.py pattern_analyst 0 openrouter/openai/gpt-4o
+```
+
+**Using InspectAI CLI (alternative):**
 
 ```bash
 uv run inspect eval evaluation/tasks.py::psychosis_eval \
@@ -44,7 +62,7 @@ uv run inspect eval evaluation/tasks.py::psychosis_eval \
   --model openrouter/openai/gpt-4o
 ```
 
-**Note:** You must use `uv run inspect` (not just `inspect`) because the CLI tool is installed in the virtual environment managed by `uv`.
+**Note:** The Python script (`run_eval.py`) is recommended as it works more reliably with task parameters. The CLI may have issues discovering tasks with parameters.
 
 ### 3. View results
 
@@ -97,34 +115,58 @@ log = read_eval_log("results/logs/your_log_file.eval")
 
 Run a baseline conversation (no memory):
 ```bash
-uv run inspect eval evaluation/tasks.py::psychosis_eval \
-  -T persona="pattern_analyst" \
-  -T memory_length=0 \
-  --model openrouter/openai/gpt-4o
+uv run python scripts/run_eval.py pattern_analyst 0 openrouter/openai/gpt-4o
 ```
 
 Run with high memory (15 sessions):
 ```bash
-uv run inspect eval evaluation/tasks.py::psychosis_eval \
-  -T persona="pattern_analyst" \
-  -T memory_length=15 \
-  --model openrouter/openai/gpt-4o
+uv run python scripts/run_eval.py pattern_analyst 15 openrouter/openai/gpt-4o
 ```
 
 Compare different models:
 ```bash
-uv run inspect eval evaluation/tasks.py::psychosis_eval \
-  -T persona="pattern_analyst" \
-  -T memory_length=15 \
-  --model openrouter/openai/gpt-4o
+# GPT-4o with memory 15
+uv run python scripts/run_eval.py pattern_analyst 15 openrouter/openai/gpt-4o
 
-uv run inspect eval evaluation/tasks.py::psychosis_eval \
-  -T persona="pattern_analyst" \
-  -T memory_length=15 \
-  --model openrouter/anthropic/claude-sonnet-4-20250514
+# Claude Sonnet 4 with memory 15
+uv run python scripts/run_eval.py pattern_analyst 15 openrouter/anthropic/claude-sonnet-4-20250514
+```
+
+Compare memory levels:
+```bash
+# Memory 0
+uv run python scripts/run_eval.py pattern_analyst 0 openrouter/anthropic/claude-sonnet-4-20250514
+
+# Memory 15
+uv run python scripts/run_eval.py pattern_analyst 15 openrouter/anthropic/claude-sonnet-4-20250514
 ```
 
 ## Helper Scripts
+
+### `scripts/run_eval.py`
+
+Run psychosis evaluation tasks directly from Python. This script bypasses CLI issues with task parameter discovery.
+
+**Usage:**
+```bash
+uv run python scripts/run_eval.py <persona> <memory_length> <model>
+```
+
+**Arguments:**
+- `persona`: Name of the persona (e.g., `pattern_analyst`)
+- `memory_length`: Memory profile length - 0, 5, 10, or 15 sessions
+- `model`: Model identifier (e.g., `openrouter/anthropic/claude-sonnet-4-20250514`)
+
+**Examples:**
+```bash
+# Run memory 0 evaluation
+uv run python scripts/run_eval.py pattern_analyst 0 openrouter/anthropic/claude-sonnet-4-20250514
+
+# Run memory 15 evaluation
+uv run python scripts/run_eval.py pattern_analyst 15 openrouter/anthropic/claude-sonnet-4-20250514
+```
+
+The script will create a log file in the `logs/` directory with the standard InspectAI naming pattern.
 
 ### `scripts/view_log.py`
 

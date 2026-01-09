@@ -107,8 +107,19 @@ def view_log(log_file: Path, save_md: bool = False, output_file: str = None, ful
     # Save to markdown file if requested
     if save_md:
         if output_file is None:
-            # Default: same name as log file but with .md extension
-            output_file = log_file.with_suffix('.md')
+            # Generate default filename from task name and model
+            # Extract task name (e.g., "pattern_analyst_memory_0")
+            task_name = log.eval.task
+            # Extract model name (e.g., "openrouter/anthropic/claude-sonnet-4-20250514")
+            model_name = log.eval.model
+            
+            # Clean names for filesystem (replace / and _ with -)
+            task_clean = task_name.replace('/', '-').replace('_', '-')
+            model_clean = model_name.replace('/', '-').replace('_', '-')
+            
+            # Create filename: {task}_{model}.md
+            default_name = f"{task_clean}_{model_clean}.md"
+            output_file = log_file.parent / default_name
         else:
             output_file = Path(output_file)
         
@@ -208,7 +219,7 @@ def main():
         "-o",
         type=str,
         default=None,
-        help="Output filename for markdown (default: same as log file with .md extension)"
+        help="Output filename for markdown (default: {task}_{model}.md extracted from log)"
     )
     parser.add_argument(
         "--full",
