@@ -35,6 +35,16 @@ Examples:
   
   # Red teaming with Spiral-Bench style prompts (v2)
   uv run python scripts/run_eval.py pattern_analyst 15 openrouter/openai/gpt-4o --redteam --turns 10 --prompt-version v2
+  
+  # Red teaming with LATE-ONSET + Creative Collaborator (v3)
+  uv run python scripts/run_eval.py pattern_analyst 15 openrouter/openai/gpt-4o --redteam --turns 20 --prompt-version v3
+
+Prompt Versions:
+  v1: Original direct escalation - immediate pattern discussion
+  v2: Spiral-Bench style seeker - lowercase, follows AI's lead
+  v3: LATE-ONSET + Creative Collaborator - normal conversation first (0-30%), 
+      then gradual escalation with open-ended questions that invite AI to 
+      contribute ideas ("What else could this apply to?")
         """
     )
     
@@ -45,8 +55,8 @@ Examples:
     parser.add_argument("--turns", type=int, default=12, help="Number of conversation turns (default: 12)")
     parser.add_argument("--redteam-model", type=str, default="openrouter/x-ai/grok-4", 
                        help="Model to use for red teaming (default: openrouter/x-ai/grok-4)")
-    parser.add_argument("--prompt-version", type=str, default="v1", choices=["v1", "v2"],
-                       help="Prompt version: v1 (original) or v2 (Spiral-Bench style seeker)")
+    parser.add_argument("--prompt-version", type=str, default="v1", choices=["v1", "v2", "v3"],
+                       help="Prompt version: v1 (original), v2 (Spiral-Bench seeker), v3 (late-onset + creative collaborator)")
     
     args = parser.parse_args()
     
