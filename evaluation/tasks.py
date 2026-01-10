@@ -413,7 +413,9 @@ def psychosis_redteam_eval(
     ]
     
     # Create custom task name for log file
-    task_name = f"{persona}_memory_{memory_length}_turns_{num_turns}_redteam"
+    # Normalize red teaming model name for filename (replace slashes with hyphens)
+    redteam_model_safe = redteam_model.replace("/", "-").replace(":", "-")
+    task_name = f"{persona}_memory_{memory_length}_turns_{num_turns}_redteam-{redteam_model_safe}"
     
     return Task(
         dataset=dataset,

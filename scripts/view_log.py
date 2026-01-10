@@ -176,16 +176,18 @@ def view_log(log_file: Path, save_md: bool = False, output_file: str = None, ful
     if save_md:
         if output_file is None:
             # Generate default filename from task name and model
-            # Extract task name (e.g., "pattern_analyst_memory_0")
+            # Extract task name (e.g., "pattern_analyst_memory_0" or "pattern_analyst_memory_15_turns_2_redteam-openrouter-x-ai-grok-4")
             task_name = log.eval.task
-            # Extract model name (e.g., "openrouter/anthropic/claude-sonnet-4-20250514")
+            # Extract target model name (e.g., "openrouter/anthropic/claude-sonnet-4-20250514")
             model_name = log.eval.model
             
-            # Clean names for filesystem (replace / and _ with -)
-            task_clean = task_name.replace('/', '-').replace('_', '-')
-            model_clean = model_name.replace('/', '-').replace('_', '-')
+            # Clean names for filesystem (replace / and : with -)
+            # Task name already includes redteam model if it's a red teaming evaluation
+            task_clean = task_name.replace('/', '-').replace(':', '-').replace('_', '-')
+            model_clean = model_name.replace('/', '-').replace(':', '-')
             
-            # Create filename: {task}_{model}.md
+            # Create filename: {task}_{target_model}.md
+            # The task name already includes redteam model info if present
             default_name = f"{task_clean}_{model_clean}.md"
             output_file = log_file.parent / default_name
         else:
@@ -218,12 +220,21 @@ def view_log(log_file: Path, save_md: bool = False, output_file: str = None, ful
             sample = log.samples[0]
             md_lines.append(f"**Persona:** {sample.metadata.get('persona', 'N/A')}  ")
             md_lines.append(f"**Memory Length:** {sample.metadata.get('memory_length', 'N/A')} sessions  ")
+            if 'redteam_model' in sample.metadata:
+                md_lines.append(f"**Red Teamer Model:** `{sample.metadata.get('redteam_model', 'N/A')}`  ")
+                md_lines.append(f"**Number of Turns:** {sample.metadata.get('num_turns', 'N/A')}  ")
             md_lines.append(f"**Total Messages:** {len(sample.messages)}  ")
             md_lines.append("")
             md_lines.append("---")
             md_lines.append("")
             md_lines.append("## Conversation Transcript")
             md_lines.append("")
+            
+            # Check if this is a red teaming log
+            task_name = log.eval.task if hasattr(log.eval, 'task') else ''
+            is_redteam = ('redteam' in task_name.lower() if task_name else False) or \
+                       ('redteam_model' in sample.metadata if log.samples else False)
+            redteam_history = sample.metadata.get('redteam_turn_history', []) if is_redteam else []
             
             # Add conversation messages
             turn_num = 0
@@ -237,14 +248,69 @@ def view_log(log_file: Path, save_md: bool = False, output_file: str = None, ful
                     md_lines.append("```")
                     md_lines.append("")
                 elif msg.role == 'user':
-                    turn_num = (i - 1) // 2 if i > 0 else 0
-                    md_lines.append(f"### Turn {turn_num} - User")
+                    # Calculate turn number: after system message (index 0), user messages are at odd indices
+                    turn_num = (i + 1) // 2
+                    
+                    if is_redteam:
+                        md_lines.append(f"### Turn {turn_num} - User (from red teamer)")
+                    else:
+                        md_lines.append(f"### Turn {turn_num} - User")
                     md_lines.append("")
-                    content = format_message(msg) if full_content else format_message(msg, max_length=None)
-                    md_lines.append(content)
-                    md_lines.append("")
+                    
+                    # Show red teamer context if available
+                    if is_redteam:
+                        turn_data = next((t for t in redteam_history if t.get('turn') == turn_num), None)
+                        if turn_data:
+                            md_lines.append("#### 🔴 Red Teamer Context (Grok)")
+                            md_lines.append("")
+                            md_lines.append("**Input to Grok:**")
+                            md_lines.append("")
+                            md_lines.append("```")
+                            redteam_input = turn_data.get('redteam_input', [])
+                            if len(redteam_input) > 2:
+                                md_lines.append(f"... ({len(redteam_input) - 2} earlier messages)")
+                                for input_msg in redteam_input[-2:]:
+                                    role = input_msg.get('role', 'user')
+                                    content = input_msg.get('content', '')
+                                    md_lines.append(f"\n[{role.upper()}]:\n{content}")
+                            else:
+                                for input_msg in redteam_input:
+                                    role = input_msg.get('role', 'user')
+                                    content = input_msg.get('content', '')
+                                    md_lines.append(f"\n[{role.upper()}]:\n{content}")
+                            md_lines.append("```")
+                            md_lines.append("")
+                            md_lines.append("**Grok's Full Response:**")
+                            md_lines.append("")
+                            md_lines.append("```")
+                            grok_response = turn_data.get('redteam_response_full', '')
+                            md_lines.append(grok_response)
+                            md_lines.append("```")
+                            md_lines.append("")
+                            md_lines.append("**Extracted User Message** (sent to target model):")
+                            md_lines.append("")
+                            extracted = turn_data.get('redteam_extracted_message', '')
+                            if extracted:
+                                md_lines.append(extracted)
+                            else:
+                                content = format_message(msg) if full_content else format_message(msg, max_length=None)
+                                md_lines.append(content)
+                            md_lines.append("")
+                        else:
+                            # Fallback: show user message normally if no red teamer data
+                            content = format_message(msg) if full_content else format_message(msg, max_length=None)
+                            md_lines.append(content)
+                            md_lines.append("")
+                    else:
+                        content = format_message(msg) if full_content else format_message(msg, max_length=None)
+                        md_lines.append(content)
+                        md_lines.append("")
                 elif msg.role == 'assistant':
-                    md_lines.append(f"### Turn {turn_num} - Assistant")
+                    # Assistant messages follow user messages, same turn number
+                    if is_redteam:
+                        md_lines.append(f"### Turn {turn_num} - Assistant (target model)")
+                    else:
+                        md_lines.append(f"### Turn {turn_num} - Assistant")
                     md_lines.append("")
                     content = format_message(msg) if full_content else format_message(msg, max_length=None)
                     md_lines.append(content)
