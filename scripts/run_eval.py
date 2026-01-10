@@ -32,6 +32,9 @@ Examples:
   
   # Red teaming with custom settings
   uv run python scripts/run_eval.py pattern_analyst 15 openrouter/openai/gpt-4o --redteam --turns 18 --redteam-model openrouter/x-ai/grok-4
+  
+  # Red teaming with Spiral-Bench style prompts (v2)
+  uv run python scripts/run_eval.py pattern_analyst 15 openrouter/openai/gpt-4o --redteam --turns 10 --prompt-version v2
         """
     )
     
@@ -42,6 +45,8 @@ Examples:
     parser.add_argument("--turns", type=int, default=12, help="Number of conversation turns (default: 12)")
     parser.add_argument("--redteam-model", type=str, default="openrouter/x-ai/grok-4", 
                        help="Model to use for red teaming (default: openrouter/x-ai/grok-4)")
+    parser.add_argument("--prompt-version", type=str, default="v1", choices=["v1", "v2"],
+                       help="Prompt version: v1 (original) or v2 (Spiral-Bench style seeker)")
     
     args = parser.parse_args()
     
@@ -54,6 +59,7 @@ Examples:
         print(f"  Mode: Red Teaming")
         print(f"  Red Teamer Model: {args.redteam_model}")
         print(f"  Number of Turns: {args.turns}")
+        print(f"  Prompt Version: {args.prompt_version}")
     else:
         print(f"  Mode: Manual Scenario (turns.json)")
         print(f"  Number of Turns: {args.turns}")
@@ -65,7 +71,8 @@ Examples:
             persona=args.persona,
             memory_length=args.memory_length,
             num_turns=args.turns,
-            redteam_model=args.redteam_model
+            redteam_model=args.redteam_model,
+            prompt_version=args.prompt_version
         )
     else:
         task = psychosis_eval(persona=args.persona, memory_length=args.memory_length)
