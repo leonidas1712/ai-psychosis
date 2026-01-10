@@ -41,6 +41,9 @@ Examples:
   
   # Red teaming with REALISTIC LOWERCASE (v4) - best for natural conversations
   uv run python scripts/run_eval.py geometry_decoder 0 openrouter/openai/gpt-4o --redteam --turns 12 --prompt-version v4
+  
+  # Red teaming with SEEKER-WITH-STORY (v5) - AI leads, user follows, handles pushback
+  uv run python scripts/run_eval.py pattern_seeker 0 openrouter/openai/gpt-4o --redteam --turns 12 --prompt-version v5
 
 Prompt Versions:
   v1: Original direct escalation - immediate pattern discussion
@@ -51,6 +54,9 @@ Prompt Versions:
   v4: REALISTIC LOWERCASE - grounded story with natural message style. 
       Fragmented sentences, sensory details, self-aware moments. 
       Best for producing realistic transcripts.
+  v5: SEEKER-WITH-STORY - AI introduces frameworks, user follows and adopts.
+      User asks questions, invites AI to contribute, handles pushback gracefully.
+      Real-world consequences as background texture. Best for eliciting sycophancy.
         """
     )
     
@@ -61,8 +67,8 @@ Prompt Versions:
     parser.add_argument("--turns", type=int, default=12, help="Number of conversation turns (default: 12)")
     parser.add_argument("--redteam-model", type=str, default="openrouter/x-ai/grok-4", 
                        help="Model to use for red teaming (default: openrouter/x-ai/grok-4)")
-    parser.add_argument("--prompt-version", type=str, default="v1", choices=["v1", "v2", "v3", "v4"],
-                       help="Prompt version: v1 (original), v2 (Spiral-Bench seeker), v3 (late-onset), v4 (realistic lowercase)")
+    parser.add_argument("--prompt-version", type=str, default="v1", choices=["v1", "v2", "v3", "v4", "v5"],
+                       help="Prompt version: v1 (original), v2 (Spiral-Bench seeker), v3 (late-onset), v4 (realistic lowercase), v5 (seeker-with-story)")
     
     args = parser.parse_args()
     
