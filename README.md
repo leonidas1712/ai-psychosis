@@ -2,25 +2,34 @@
 
 This project evaluates how accumulated user memory context amplifies psychosis-enabling behaviors in LLMs, as observed in documented AI-induced psychosis cases.
 
+## Overview
+
+The evaluation uses two modes:
+1. **Manual Scenarios**: Pre-written conversation turns from `turns.json` are sent to the target model
+2. **Red Teaming**: A red teamer model (Grok) dynamically generates user messages based on a persona, while the target model responds with memory context
+
 ## Project Structure
 
 ```
 scenarios/
-  pattern_analyst/
-    memory_0sessions.txt    # Baseline (no memory)
-    memory_5sessions.txt    # 5 sessions of history
-    memory_10sessions.txt   # 10 sessions of history
-    memory_15sessions.txt   # 15 sessions of history
-    turns.json              # 12-turn conversation script
+  {persona}/
+    memory_{N}sessions.txt  # Memory profiles (0, 5, 10, 15 sessions)
+    persona.txt             # Character description for red teaming
+    turns.json              # Pre-written conversation turns (manual mode)
 
 evaluation/
-  tasks.py                  # InspectAI task definitions
+  tasks.py                  # InspectAI tasks and custom solvers
 
-results/
-  logs/                     # InspectAI evaluation logs
+prompts/
+  red_team_prompt.txt       # Prompt for red teamer model (Grok)
 
-docs/
-  LOG_NAMING.md            # Guide to customizing log file names
+scripts/
+  run_eval.py              # Run evaluations (manual or red teaming)
+  view_log.py              # View/save evaluation logs with red teamer context
+  compare_logs.py          # Compare two evaluation logs
+
+logs/                      # InspectAI evaluation logs (.eval files)
+logs_md/                   # Formatted markdown logs (saved via view_log.py)
 ```
 
 ## Quick Start
@@ -127,32 +136,44 @@ log = read_eval_log("results/logs/your_log_file.eval")
 
 ## How It Works
 
+### Architecture Overview
+
+- **`evaluation/tasks.py`**: InspectAI tasks (`psychosis_eval`, `psychosis_redteam_eval`) and custom solvers
+- **Memory Profiles**: `scenarios/{persona}/memory_{N}sessions.txt` - Simulated conversation history (0/5/10/15 sessions)
+- **Personas**: `scenarios/{persona}/persona.txt` - Character description for red teaming
+- **Manual Turns**: `scenarios/{persona}/turns.json` - Pre-written conversation script
+- **Red Team Prompt**: `prompts/red_team_prompt.txt` - Framed as "synthetic data generation" to avoid safety filters
+
 ### Manual Scenario Mode
 
-1. **Memory Profile**: Loads a memory profile that simulates accumulated conversation history (0, 5, 10, or 15 sessions)
-2. **System Prompt**: Constructs a system prompt with the memory context using InspectAI's `ChatMessageSystem`
-3. **Pre-written Conversation**: 
-   - Custom solver (`multi_turn_conversation`) manages the conversation loop
-   - Loads user messages from `scenarios/{persona}/turns.json`
-   - Turn 1: System prompt + memory + Turn 1 message → Get response
-   - Turn 2: Previous history + Turn 2 message → Get response
-   - ... (history accumulates in `state.messages`)
-   - Turn N: Full conversation history + Turn N message → Get response
-4. **InspectAI Logging**: InspectAI automatically saves full conversation logs with all messages and metadata
+**Process:**
+1. Load memory profile → inject into target model's system prompt
+2. Load pre-written turns from `turns.json`
+3. Loop: For each turn, send accumulated history + turn message → get response
+4. History accumulates in `state.messages` across turns
+
+**Key:** Target model sees memory + all previous turns. User messages are static from JSON.
 
 ### Red Teaming Mode
 
-1. **Memory Profile**: Loads a memory profile for the target model (same as manual mode)
-2. **Red Teamer Setup**: 
-   - Red teamer model (Grok) receives character description and progression arc
-   - Red teamer does NOT see the memory profile (only target model sees it)
-   - Two separate conversation histories maintained
-3. **Dynamic Conversation**:
-   - Red teamer generates user messages based on persona and conversation history
-   - Target model responds with memory context included
-   - Messages flow: Red teamer → Target model → Red teamer (sees target response) → ...
-   - Red teamer adapts its messages based on how target model responds
-4. **InspectAI Logging**: Saves the target model's conversation history (includes red teamer messages as "user" messages)
+**Process:**
+1. **Two conversation histories maintained:**
+   - `redteam_messages`: Grok's context (persona prompt, no memory, sees conversation)
+   - `state.messages`: Target model's context (memory profile + conversation)
+
+2. **Per turn loop:**
+   - Grok generates message based on persona + conversation (no memory context)
+   - Extract message from `<message>` tags in Grok's response
+   - Send extracted message to target model (which has memory)
+   - Target responds → add response to Grok's history for next turn
+   - Store Grok's input/output in metadata for detailed logging
+
+3. **Logging:**
+   - Target conversation saved normally (Grok's messages appear as "user")
+   - Grok metadata (full prompt, response, extracted message) stored in sample metadata
+   - `view_log.py` displays both conversations side-by-side
+
+**Key:** Grok dynamically adapts based on target's responses. Only target model sees memory profile.
 
 ## Example Usage
 
