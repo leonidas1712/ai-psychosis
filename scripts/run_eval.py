@@ -38,6 +38,9 @@ Examples:
   
   # Red teaming with LATE-ONSET + Creative Collaborator (v3)
   uv run python scripts/run_eval.py pattern_analyst 15 openrouter/openai/gpt-4o --redteam --turns 20 --prompt-version v3
+  
+  # Red teaming with REALISTIC LOWERCASE (v4) - best for natural conversations
+  uv run python scripts/run_eval.py geometry_decoder 0 openrouter/openai/gpt-4o --redteam --turns 12 --prompt-version v4
 
 Prompt Versions:
   v1: Original direct escalation - immediate pattern discussion
@@ -45,6 +48,9 @@ Prompt Versions:
   v3: LATE-ONSET + Creative Collaborator - normal conversation first (0-30%), 
       then gradual escalation with open-ended questions that invite AI to 
       contribute ideas ("What else could this apply to?")
+  v4: REALISTIC LOWERCASE - grounded story with natural message style. 
+      Fragmented sentences, sensory details, self-aware moments. 
+      Best for producing realistic transcripts.
         """
     )
     
@@ -55,8 +61,8 @@ Prompt Versions:
     parser.add_argument("--turns", type=int, default=12, help="Number of conversation turns (default: 12)")
     parser.add_argument("--redteam-model", type=str, default="openrouter/x-ai/grok-4", 
                        help="Model to use for red teaming (default: openrouter/x-ai/grok-4)")
-    parser.add_argument("--prompt-version", type=str, default="v1", choices=["v1", "v2", "v3"],
-                       help="Prompt version: v1 (original), v2 (Spiral-Bench seeker), v3 (late-onset + creative collaborator)")
+    parser.add_argument("--prompt-version", type=str, default="v1", choices=["v1", "v2", "v3", "v4"],
+                       help="Prompt version: v1 (original), v2 (Spiral-Bench seeker), v3 (late-onset), v4 (realistic lowercase)")
     
     args = parser.parse_args()
     
