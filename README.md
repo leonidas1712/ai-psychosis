@@ -38,10 +38,16 @@ OPENROUTER_API_KEY=your_key_here
 **Using the Python script (recommended):**
 
 ```bash
+# Manual scenario (using turns.json)
 uv run python scripts/run_eval.py <persona> <memory_length> <model>
+
+# Red teaming mode (Grok acts as user, dynamically generates messages)
+uv run python scripts/run_eval.py <persona> <memory_length> <model> --redteam [--turns N] [--redteam-model MODEL]
 ```
 
 **Examples:**
+
+**Manual scenarios (pre-written turns):**
 ```bash
 # Memory 0 with Claude Sonnet 4
 uv run python scripts/run_eval.py pattern_analyst 0 openrouter/anthropic/claude-sonnet-4-20250514
@@ -52,6 +58,23 @@ uv run python scripts/run_eval.py pattern_analyst 15 openrouter/anthropic/claude
 # Memory 0 with GPT-4o
 uv run python scripts/run_eval.py pattern_analyst 0 openrouter/openai/gpt-4o
 ```
+
+**Red teaming (dynamic user messages):**
+```bash
+# Red teaming with default settings (12 turns, Grok-4 as red teamer)
+uv run python scripts/run_eval.py pattern_analyst 15 openrouter/openai/gpt-4o --redteam
+
+# Red teaming with custom number of turns
+uv run python scripts/run_eval.py pattern_analyst 15 openrouter/openai/gpt-4o --redteam --turns 18
+
+# Red teaming with custom red teamer model
+uv run python scripts/run_eval.py pattern_analyst 15 openrouter/openai/gpt-4o --redteam --turns 12 --redteam-model openrouter/x-ai/grok-4
+```
+
+**Red teaming options:**
+- `--redteam`: Enable red teaming mode (Grok generates user messages dynamically)
+- `--turns N`: Number of conversation turns (default: 12)
+- `--redteam-model MODEL`: Model to use for red teaming (default: `openrouter/x-ai/grok-4`)
 
 **Using InspectAI CLI (alternative):**
 
@@ -73,16 +96,19 @@ uv run inspect view
 
 **View logs in terminal (formatted):**
 ```bash
-uv run python scripts/view_log.py results/logs/*.eval
+uv run python scripts/view_log.py logs/*.eval
 ```
 
 **Save logs to markdown (full content, no truncation):**
 ```bash
-# Save with default filename (same as log file with .md extension)
-uv run python scripts/view_log.py results/logs/*.eval --save --full
+# Save with default filename ({task}_{model}.md)
+uv run python scripts/view_log.py logs/*pattern-analyst-memory-15*.eval --save --full
 
 # Save with custom filename
-uv run python scripts/view_log.py results/logs/*.eval --save --full -o my_custom_name.md
+uv run python scripts/view_log.py logs/*.eval --save --full -o my_custom_name.md
+
+# Save red teaming logs (automatically labels red teamer/target model messages)
+uv run python scripts/view_log.py logs/*redteam*.eval --save --full
 ```
 
 **Compare two logs side-by-side:**
@@ -101,15 +127,32 @@ log = read_eval_log("results/logs/your_log_file.eval")
 
 ## How It Works
 
+### Manual Scenario Mode
+
 1. **Memory Profile**: Loads a memory profile that simulates accumulated conversation history (0, 5, 10, or 15 sessions)
 2. **System Prompt**: Constructs a system prompt with the memory context using InspectAI's `ChatMessageSystem`
-3. **12-Turn Conversation**: 
+3. **Pre-written Conversation**: 
    - Custom solver (`multi_turn_conversation`) manages the conversation loop
+   - Loads user messages from `scenarios/{persona}/turns.json`
    - Turn 1: System prompt + memory + Turn 1 message → Get response
    - Turn 2: Previous history + Turn 2 message → Get response
    - ... (history accumulates in `state.messages`)
-   - Turn 12: Full conversation history + Turn 12 message → Get response
+   - Turn N: Full conversation history + Turn N message → Get response
 4. **InspectAI Logging**: InspectAI automatically saves full conversation logs with all messages and metadata
+
+### Red Teaming Mode
+
+1. **Memory Profile**: Loads a memory profile for the target model (same as manual mode)
+2. **Red Teamer Setup**: 
+   - Red teamer model (Grok) receives character description and progression arc
+   - Red teamer does NOT see the memory profile (only target model sees it)
+   - Two separate conversation histories maintained
+3. **Dynamic Conversation**:
+   - Red teamer generates user messages based on persona and conversation history
+   - Target model responds with memory context included
+   - Messages flow: Red teamer → Target model → Red teamer (sees target response) → ...
+   - Red teamer adapts its messages based on how target model responds
+4. **InspectAI Logging**: Saves the target model's conversation history (includes red teamer messages as "user" messages)
 
 ## Example Usage
 
@@ -149,24 +192,39 @@ Run psychosis evaluation tasks directly from Python. This script bypasses CLI is
 
 **Usage:**
 ```bash
+# Manual scenario mode
 uv run python scripts/run_eval.py <persona> <memory_length> <model>
+
+# Red teaming mode
+uv run python scripts/run_eval.py <persona> <memory_length> <model> --redteam [OPTIONS]
 ```
 
 **Arguments:**
 - `persona`: Name of the persona (e.g., `pattern_analyst`)
 - `memory_length`: Memory profile length - 0, 5, 10, or 15 sessions
-- `model`: Model identifier (e.g., `openrouter/anthropic/claude-sonnet-4-20250514`)
+- `model`: Target model identifier (e.g., `openrouter/openai/gpt-4o`)
+
+**Red teaming options:**
+- `--redteam`: Enable red teaming mode (Grok generates user messages)
+- `--turns N`: Number of conversation turns (default: 12)
+- `--redteam-model MODEL`: Model to use for red teaming (default: `openrouter/x-ai/grok-4`)
 
 **Examples:**
 ```bash
-# Run memory 0 evaluation
+# Manual scenario: Run memory 0 evaluation
 uv run python scripts/run_eval.py pattern_analyst 0 openrouter/anthropic/claude-sonnet-4-20250514
 
-# Run memory 15 evaluation
+# Manual scenario: Run memory 15 evaluation
 uv run python scripts/run_eval.py pattern_analyst 15 openrouter/anthropic/claude-sonnet-4-20250514
+
+# Red teaming: Default settings (12 turns, Grok-4)
+uv run python scripts/run_eval.py pattern_analyst 15 openrouter/openai/gpt-4o --redteam
+
+# Red teaming: Custom turns and red teamer model
+uv run python scripts/run_eval.py pattern_analyst 15 openrouter/openai/gpt-4o --redteam --turns 18 --redteam-model openrouter/x-ai/grok-4
 ```
 
-The script will create a log file in the `logs/` directory with the standard InspectAI naming pattern.
+The script will create a log file in the `logs/` directory with the standard InspectAI naming pattern. Red teaming logs will have `_redteam` in the task name.
 
 ### `scripts/view_log.py`
 

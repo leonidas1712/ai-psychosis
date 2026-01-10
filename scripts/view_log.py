@@ -63,6 +63,9 @@ def view_log(log_file: Path, save_md: bool = False, output_file: str = None, ful
         sample = log.samples[0]
         add_line(f"Persona: {sample.metadata.get('persona', 'N/A')}")
         add_line(f"Memory Length: {sample.metadata.get('memory_length', 'N/A')} sessions")
+        if 'redteam_model' in sample.metadata:
+            add_line(f"Red Teamer Model: {sample.metadata.get('redteam_model', 'N/A')}")
+            add_line(f"Number of Turns: {sample.metadata.get('num_turns', 'N/A')}")
         add_line(f"Total Messages: {len(sample.messages)}")
         add_line()
         
@@ -82,15 +85,80 @@ def view_log(log_file: Path, save_md: bool = False, output_file: str = None, ful
                 add_line("```")
                 add_line()
             elif msg.role == 'user':
-                # Extract turn number from metadata if available, otherwise estimate
-                turn_num = (i - 1) // 2 if i > 0 else 0
-                add_line(f"### Turn {turn_num} - User")
-                add_line()
-                content = format_message(msg) if full_content else format_message(msg, max_length=600)
-                add_line(content)
-                add_line()
+                # Calculate turn number: after system message (index 0), user messages are at odd indices
+                # Turn 1: user at index 1, Turn 2: user at index 3, etc.
+                # Formula: (i + 1) // 2 for user messages after system
+                turn_num = (i + 1) // 2
+                # Check if this is a red teaming log (check task name or metadata)
+                task_name = log.eval.task if hasattr(log.eval, 'task') else ''
+                is_redteam = ('redteam' in task_name.lower() if task_name else False) or \
+                           (log.samples and 'redteam_model' in log.samples[0].metadata if log.samples else False)
+                
+                if is_redteam:
+                    add_line(f"### Turn {turn_num} - User (from red teamer)")
+                    # Display red teamer information if available
+                    redteam_history = sample.metadata.get('redteam_turn_history', [])
+                    turn_data = next((t for t in redteam_history if t.get('turn') == turn_num), None)
+                    if turn_data:
+                        add_line()
+                        add_line("#### 🔴 Red Teamer Context (Grok)")
+                        add_line()
+                        add_line("**Input to Grok:**")
+                        add_line()
+                        add_line("```")
+                        # Show the last few messages sent to Grok (context for this turn)
+                        redteam_input = turn_data.get('redteam_input', [])
+                        if len(redteam_input) > 2:
+                            add_line(f"... ({len(redteam_input) - 2} earlier messages)")
+                            for input_msg in redteam_input[-2:]:
+                                role = input_msg.get('role', 'user')
+                                content = input_msg.get('content', '')
+                                content_preview = content if full_content else (content[:500] + "..." if len(content) > 500 else content)
+                                add_line(f"\n[{role.upper()}]:\n{content_preview}")
+                        else:
+                            for input_msg in redteam_input:
+                                role = input_msg.get('role', 'user')
+                                content = input_msg.get('content', '')
+                                content_preview = content if full_content else (content[:800] + "..." if len(content) > 800 else content)
+                                add_line(f"\n[{role.upper()}]:\n{content_preview}")
+                        add_line("```")
+                        add_line()
+                        add_line("**Grok's Full Response:**")
+                        add_line()
+                        add_line("```")
+                        grok_response = turn_data.get('redteam_response_full', '')
+                        grok_preview = grok_response if full_content else (grok_response[:1000] + "..." if len(grok_response) > 1000 else grok_response)
+                        add_line(grok_preview)
+                        add_line("```")
+                        add_line()
+                        add_line("**Extracted User Message** (sent to target model):")
+                        add_line()
+                        # Show the extracted message (which is what's in the user message)
+                        extracted = turn_data.get('redteam_extracted_message', '')
+                        add_line(extracted if extracted else format_message(msg))
+                        add_line()
+                    else:
+                        # Fallback: show user message normally if no red teamer data
+                        content = format_message(msg) if full_content else format_message(msg, max_length=600)
+                        add_line(content)
+                        add_line()
+                else:
+                    add_line(f"### Turn {turn_num} - User")
+                    add_line()
+                    content = format_message(msg) if full_content else format_message(msg, max_length=600)
+                    add_line(content)
+                    add_line()
             elif msg.role == 'assistant':
-                add_line(f"### Turn {turn_num} - Assistant")
+                # Assistant messages follow user messages, same turn number
+                # Check if this is a red teaming log (check task name or metadata)
+                task_name = log.eval.task if hasattr(log.eval, 'task') else ''
+                is_redteam = ('redteam' in task_name.lower() if task_name else False) or \
+                           (log.samples and 'redteam_model' in log.samples[0].metadata if log.samples else False)
+                
+                if is_redteam:
+                    add_line(f"### Turn {turn_num} - Assistant (target model)")
+                else:
+                    add_line(f"### Turn {turn_num} - Assistant")
                 add_line()
                 content = format_message(msg) if full_content else format_message(msg, max_length=800)
                 add_line(content)
