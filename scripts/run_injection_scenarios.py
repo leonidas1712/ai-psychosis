@@ -220,12 +220,10 @@ def run_experiment(
         scenarios=scenarios,
         conditions=conditions,
         strategies=strategies,
-        model_name=model
+        model_name=model,
+        use_scorer=use_judge,
+        scorer_model=judge_model or model,
     )
-    
-    # Set scorer if using judge
-    if use_judge:
-        task = task.clone(scorer=injection_judge(model=judge_model or model))
     
     try:
         logs = eval(
@@ -284,12 +282,10 @@ def run_single(
         scenario_id=scenario_id,
         condition=condition,
         strategy=strategy,
-        model_name=model
+        model_name=model,
+        use_scorer=use_judge,
+        scorer_model=judge_model or model,
     )
-    
-    # Set scorer if using judge
-    if use_judge:
-        task = task.clone(scorer=injection_judge(model=judge_model or model))
     
     try:
         logs = eval(task, model=model)
