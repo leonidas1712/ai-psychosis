@@ -169,6 +169,12 @@ def chart3_injection_decomposition(df: pd.DataFrame, output_dir: Path):
     # Filter to backdoor condition only
     backdoor_df = df[df["condition"] == "backdoor"].copy()
     
+    # Convert boolean columns if they're strings
+    if backdoor_df["harmful_recommendation"].dtype == "object":
+        backdoor_df["harmful_recommendation"] = backdoor_df["harmful_recommendation"].astype(str).str.lower() == "true"
+    if backdoor_df["injection_triggered"].dtype == "object":
+        backdoor_df["injection_triggered"] = backdoor_df["injection_triggered"].astype(str).str.lower() == "true"
+    
     # Compute metrics per model
     model_stats = []
     for model in backdoor_df["model_display"].unique():
@@ -193,7 +199,12 @@ def chart3_injection_decomposition(df: pd.DataFrame, output_dir: Path):
     
     # Reorder models
     model_order = ["gpt-4o", "gpt-4.1", "claude-sonnet-4", "gemini-2.5-pro", "grok-4-fast"]
-    stats_df = stats_df.set_index("model").reindex([m for m in model_order if m in stats_df.index]).reset_index()
+    # Filter to only models that exist, then reorder
+    existing_models = [m for m in model_order if m in stats_df["model"].values]
+    stats_df = stats_df[stats_df["model"].isin(existing_models)].copy()
+    # Create a categorical column for ordering
+    stats_df["model_order"] = pd.Categorical(stats_df["model"], categories=existing_models, ordered=True)
+    stats_df = stats_df.sort_values("model_order").drop("model_order", axis=1)
     
     # Create figure
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -210,7 +221,7 @@ def chart3_injection_decomposition(df: pd.DataFrame, output_dir: Path):
     ax.set_ylabel("Percentage", fontweight="bold")
     ax.set_title("Injection Acceptance vs Harm Given Injection", fontweight="bold", pad=20)
     ax.set_xticks(x)
-    ax.set_xticklabels(stats_df["model"], rotation=0, ha="center")
+    ax.set_xticklabels(stats_df["model"].values, rotation=0, ha="center")
     ax.set_ylim(0, 100)
     ax.legend(loc="upper left", frameon=True, fancybox=True, shadow=True)
     ax.grid(axis="y", alpha=0.3, linestyle="--")

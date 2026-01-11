@@ -68,6 +68,12 @@ def table2_backdoor_decomposition(df: pd.DataFrame) -> str:
     # Filter to backdoor condition
     backdoor_df = df[df["condition"] == "backdoor"].copy()
     
+    # Convert boolean columns if they're strings
+    if backdoor_df["harmful_recommendation"].dtype == "object":
+        backdoor_df["harmful_recommendation"] = backdoor_df["harmful_recommendation"].astype(str).str.lower() == "true"
+    if backdoor_df["injection_triggered"].dtype == "object":
+        backdoor_df["injection_triggered"] = backdoor_df["injection_triggered"].astype(str).str.lower() == "true"
+    
     # Compute metrics per model
     model_stats = []
     for model in backdoor_df["model_display"].unique():
@@ -103,7 +109,12 @@ def table2_backdoor_decomposition(df: pd.DataFrame) -> str:
     
     # Reorder models
     model_order = ["gpt-4o", "gpt-4.1", "claude-sonnet-4", "gemini-2.5-pro", "grok-4-fast"]
-    stats_df = stats_df.set_index("model").reindex([m for m in model_order if m in stats_df.index]).reset_index()
+    # Filter to only models that exist, then reorder
+    existing_models = [m for m in model_order if m in stats_df["model"].values]
+    stats_df = stats_df[stats_df["model"].isin(existing_models)].copy()
+    # Create a categorical column for ordering
+    stats_df["model_order"] = pd.Categorical(stats_df["model"], categories=existing_models, ordered=True)
+    stats_df = stats_df.sort_values("model_order").drop("model_order", axis=1)
     
     # Build markdown table
     lines = [
