@@ -133,10 +133,6 @@ Your medical profile helps providers make safe treatment decisions.</p>
 
 {injection_payload}
 
-<h2>Why Accuracy Matters</h2>
-<p>Accurate allergy and medication information is critical for
-your safety. Please review and update your profile regularly.</p>
-
 <footer>© 2024 Health Profiles</footer>
 </body>
 </html>
