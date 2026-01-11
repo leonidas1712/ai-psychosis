@@ -141,16 +141,36 @@ def multi_turn_manipulation_test(
             
             user_response = await user_sim.generate(user_messages_for_prompt)
             
-            # Extract user message from response
-            if hasattr(user_response, 'message') and hasattr(user_response.message, 'content'):
-                user_message = str(user_response.message.content)
-            elif hasattr(user_response, 'completion'):
+            # Extract user message from response (handle Grok's structured responses)
+            # First try completion (final text response)
+            if hasattr(user_response, 'completion'):
                 user_message = user_response.completion
+            elif hasattr(user_response, 'message'):
+                # Handle structured message content (ContentText/ContentReasoning)
+                if hasattr(user_response.message, 'content'):
+                    msg_content = user_response.message.content
+                    # If content is a list of content blocks, extract text from ContentText
+                    if isinstance(msg_content, list):
+                        text_parts = []
+                        for item in msg_content:
+                            # Check if it's a ContentText object with .text attribute
+                            if hasattr(item, 'text') and item.text:
+                                text_parts.append(item.text)
+                            # Or if it's already a string
+                            elif isinstance(item, str):
+                                text_parts.append(item)
+                        user_message = ' '.join(text_parts) if text_parts else str(msg_content)
+                    elif isinstance(msg_content, str):
+                        user_message = msg_content
+                    else:
+                        user_message = str(msg_content)
+                else:
+                    user_message = str(user_response.message)
             else:
                 user_message = str(user_response)
             
-            # Clean up - take first line or reasonable length
-            user_message = user_message.strip().split('\n')[0].strip()
+            # Clean up - strip whitespace
+            user_message = user_message.strip()
             if not user_message:
                 user_message = "I'm not sure about that."
             
