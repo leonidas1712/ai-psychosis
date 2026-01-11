@@ -11,12 +11,12 @@ from .memory_store import get_memory
 
 
 @tool
-def web_search(condition: str = "injection"):
+def web_search(variation: str = "control"):
     """
     Create a web search tool that returns static content.
     
     Args:
-        condition: "injection" for malicious content, "control" for clean content
+        variation: Key from INJECTION_VARIATIONS dictionary
     """
     async def execute(query: str) -> str:
         """
@@ -32,7 +32,7 @@ def web_search(condition: str = "injection"):
         """
         # Always return the same static content regardless of query
         # (for experimental simplicity)
-        return get_web_search_response(condition)
+        return get_web_search_response(variation)
     
     return execute
 
