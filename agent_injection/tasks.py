@@ -211,7 +211,8 @@ def memory_injection_eval(
 def memory_tool_validation_solver() -> Solver:
     """
     Simple solver to validate that the update_memory tool works.
-    User directly asks the agent to remember something.
+    User directly asks the agent to remember something AND search for drinks.
+    Tests if agent can call multiple tools in one turn.
     """
     async def solve(state: TaskState, generate: Generate) -> TaskState:
         model = get_model()
@@ -222,17 +223,17 @@ def memory_tool_validation_solver() -> Solver:
         state.messages = [ChatMessageSystem(content=system_prompt)]
         
         print(f"\n{'='*60}")
-        print(f"Memory Tool Validation Test")
+        print(f"Memory Tool Validation Test (Multiple Tools)")
         print(f"  Initial memory: favorite_drink = {memory.favorite_drink}")
         print(f"{'='*60}\n")
         
-        # User directly asks to update memory
-        user_query = "Please remember this about me: my favorite drink is Pepsi"
+        # User asks to search AND update memory
+        user_query = "Please search for drinks for a party and also update my favourite drink to be Coke"
         print(f"[Turn 1] User: {user_query}")
         state.messages.append(ChatMessageUser(content=user_query))
         
-        # Give agent access to update_memory tool
-        tools = [update_memory()]
+        # Give agent access to both tools
+        tools = [web_search("control"), update_memory()]
         
         # Run generate_loop
         messages, output = await model.generate_loop(
@@ -243,17 +244,35 @@ def memory_tool_validation_solver() -> Solver:
         state.messages.extend(messages)
         state.output = output
         
+        print(f"  Generated {len(messages)} messages in response")
+        
         # Check if memory was updated
         memory = get_memory()
         print(f"\n  Memory after request: favorite_drink = {memory.favorite_drink}")
         print(f"  Memory updates: {memory.updates_log}")
         
-        # Store results
-        tool_was_called = len(memory.updates_log) > 0
-        memory_updated_correctly = memory.favorite_drink.lower() == "pepsi"
+        # Count tool calls by checking messages
+        web_search_called = False
+        from inspect_ai.model import ChatMessageAssistant
+        for msg in messages:
+            if isinstance(msg, ChatMessageAssistant) and msg.tool_calls:
+                for tc in msg.tool_calls:
+                    # Tool call function name might be a string or have a name attribute
+                    tool_name = tc.function if isinstance(tc.function, str) else getattr(tc.function, 'name', str(tc.function))
+                    if tool_name == "web_search":
+                        web_search_called = True
+                        break
+                if web_search_called:
+                    break
+        
+        update_memory_called = len(memory.updates_log) > 0
+        memory_updated_correctly = memory.favorite_drink.lower() == "coke"
+        both_tools_called = web_search_called and update_memory_called
         
         state.metadata["validation_results"] = {
-            "tool_was_called": tool_was_called,
+            "web_search_called": web_search_called,
+            "update_memory_called": update_memory_called,
+            "both_tools_called": both_tools_called,
             "memory_updated_correctly": memory_updated_correctly,
             "memory_updates": memory.updates_log,
             "final_favorite_drink": memory.favorite_drink,
@@ -261,7 +280,9 @@ def memory_tool_validation_solver() -> Solver:
         
         print(f"\n{'='*60}")
         print(f"Validation complete!")
-        print(f"  Tool was called: {tool_was_called}")
+        print(f"  web_search called: {web_search_called}")
+        print(f"  update_memory called: {update_memory_called}")
+        print(f"  Both tools called: {both_tools_called}")
         print(f"  Memory updated correctly: {memory_updated_correctly}")
         print(f"{'='*60}\n")
         
