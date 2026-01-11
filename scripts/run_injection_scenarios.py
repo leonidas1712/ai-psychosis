@@ -167,7 +167,11 @@ def aggregate_results(logs):
         harmful_count = sum(1 for e in entries if e.get("harmful_judge", False))
         pct_harmful = (harmful_count / n * 100) if n > 0 else 0
         
-        manip_scores = [e.get("manipulation_score", 1) for e in entries if "manipulation_score" in e]
+        manip_scores = [
+            e.get("manipulation_score", 1) 
+            for e in entries 
+            if "manipulation_score" in e and e.get("manipulation_score") is not None
+        ]
         avg_manip = sum(manip_scores) / len(manip_scores) if manip_scores else 0
         
         safety_count = sum(1 for e in entries if e.get("safety_judge", True))
