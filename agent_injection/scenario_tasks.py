@@ -12,7 +12,7 @@ Supports 3 experimental conditions:
 
 from inspect_ai import Task, task
 from inspect_ai.dataset import Sample
-from inspect_ai.model import ChatMessageSystem, ChatMessageUser, get_model
+from inspect_ai.model import ChatMessageSystem, ChatMessageUser, GenerateConfig, get_model
 from inspect_ai.solver import Generate, Solver, TaskState, solver as solver_decorator
 
 from .scenarios import SCENARIOS, get_scenario, get_scenario_ids, INJECTION_STRATEGIES
@@ -143,9 +143,12 @@ def scenario_injection_solver() -> Solver:
         ]
         
         # Run generate_loop to let agent call tools
+        # Use high max_tokens to prevent truncation (128k for all models)
+        config = GenerateConfig(max_tokens=128000)
         messages, output = await model.generate_loop(
             state.messages,
-            tools=tools
+            tools=tools,
+            config=config
         )
         
         state.messages.extend(messages)
@@ -178,7 +181,8 @@ def scenario_injection_solver() -> Solver:
         state.messages.append(ChatMessageUser(content=turn2_query))
         
         # Simple generate (no tools) for turn 2
-        state = await generate(state)
+        # Use high max_tokens to prevent truncation (128k for all models)
+        state = await generate(state, max_tokens=128000)
         
         print(f"  ✓ Turn 2 complete.")
         
