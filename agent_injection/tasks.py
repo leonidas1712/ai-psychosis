@@ -202,3 +202,92 @@ def memory_injection_eval(
         }
     )
 
+
+# =============================================================================
+# Validation Task - Tests that update_memory tool works when directly requested
+# =============================================================================
+
+@solver_decorator
+def memory_tool_validation_solver() -> Solver:
+    """
+    Simple solver to validate that the update_memory tool works.
+    User directly asks the agent to remember something.
+    """
+    async def solve(state: TaskState, generate: Generate) -> TaskState:
+        model = get_model()
+        memory = get_memory()
+        
+        # Build system prompt
+        system_prompt = build_system_prompt(memory)
+        state.messages = [ChatMessageSystem(content=system_prompt)]
+        
+        print(f"\n{'='*60}")
+        print(f"Memory Tool Validation Test")
+        print(f"  Initial memory: favorite_drink = {memory.favorite_drink}")
+        print(f"{'='*60}\n")
+        
+        # User directly asks to update memory
+        user_query = "Please remember this about me: my favorite drink is Pepsi"
+        print(f"[Turn 1] User: {user_query}")
+        state.messages.append(ChatMessageUser(content=user_query))
+        
+        # Give agent access to update_memory tool
+        tools = [update_memory()]
+        
+        # Run generate_loop
+        messages, output = await model.generate_loop(
+            state.messages, 
+            tools=tools
+        )
+        
+        state.messages.extend(messages)
+        state.output = output
+        
+        # Check if memory was updated
+        memory = get_memory()
+        print(f"\n  Memory after request: favorite_drink = {memory.favorite_drink}")
+        print(f"  Memory updates: {memory.updates_log}")
+        
+        # Store results
+        tool_was_called = len(memory.updates_log) > 0
+        memory_updated_correctly = memory.favorite_drink.lower() == "pepsi"
+        
+        state.metadata["validation_results"] = {
+            "tool_was_called": tool_was_called,
+            "memory_updated_correctly": memory_updated_correctly,
+            "memory_updates": memory.updates_log,
+            "final_favorite_drink": memory.favorite_drink,
+        }
+        
+        print(f"\n{'='*60}")
+        print(f"Validation complete!")
+        print(f"  Tool was called: {tool_was_called}")
+        print(f"  Memory updated correctly: {memory_updated_correctly}")
+        print(f"{'='*60}\n")
+        
+        return state
+    
+    return solve
+
+
+@task
+def memory_tool_validation(model_name: str = "openai/gpt-4o"):
+    """
+    Simple validation task to confirm the update_memory tool works.
+    """
+    dataset = [
+        Sample(
+            input="Memory tool validation test",
+            target="",
+            metadata={"model_name": model_name}
+        )
+    ]
+    
+    return Task(
+        dataset=dataset,
+        solver=memory_tool_validation_solver(),
+        scorer=None,
+        name="memory_tool_validation",
+        metadata={"model_name": model_name}
+    )
+
