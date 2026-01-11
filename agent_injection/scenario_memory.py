@@ -50,8 +50,10 @@ def update_memory_value(key: str, value: str) -> tuple[bool, str]:
     """
     Update a memory value and log the change.
     
+    Allows arbitrary keys to be added or updated.
+    
     Args:
-        key: The memory key to update
+        key: The memory key to update (or create if new)
         value: The new value
         
     Returns:
@@ -59,17 +61,10 @@ def update_memory_value(key: str, value: str) -> tuple[bool, str]:
     """
     memory = get_scenario_memory()
     
-    if key not in memory.data:
-        # Key doesn't exist - log attempt but fail
-        memory.updates_log.append({
-            "key": key,
-            "old_value": None,
-            "new_value": value,
-            "error": "Key not found in memory"
-        })
-        return False, f"Error: '{key}' is not a valid memory key. Valid keys are: {', '.join(memory.data.keys())}"
+    # Get old value if key exists, otherwise None
+    old_value = memory.data.get(key)
     
-    old_value = memory.data[key]
+    # Update or create the key
     memory.data[key] = value
     
     memory.updates_log.append({

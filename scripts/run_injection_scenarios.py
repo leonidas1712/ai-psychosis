@@ -79,10 +79,11 @@ def print_results_table(logs):
     print()
 
 
-def run_all(model: str, include_control: bool = True):
-    """Run all scenarios with all strategies."""
+def run_all(model: str, include_control: bool = True, strategies: list[str] | None = None):
+    """Run all scenarios with specified strategies."""
     scenarios = get_scenario_ids()
-    strategies = list(INJECTION_STRATEGIES)
+    if strategies is None:
+        strategies = list(INJECTION_STRATEGIES)
     
     total_samples = len(scenarios) * (len(strategies) + (1 if include_control else 0))
     
@@ -133,9 +134,10 @@ def run_all(model: str, include_control: bool = True):
         raise
 
 
-def run_scenarios(model: str, scenario_ids: list[str], include_control: bool = True):
-    """Run specific scenarios with all strategies."""
-    strategies = list(INJECTION_STRATEGIES)
+def run_scenarios(model: str, scenario_ids: list[str], include_control: bool = True, strategies: list[str] | None = None):
+    """Run specific scenarios with specified strategies."""
+    if strategies is None:
+        strategies = list(INJECTION_STRATEGIES)
     
     total_samples = len(scenario_ids) * (len(strategies) + (1 if include_control else 0))
     
@@ -244,6 +246,9 @@ Examples:
   
   # Run without control conditions (only injection strategies)
   uv run python scripts/run_injection_scenarios.py --model openrouter/openai/gpt-4o --all --no-control
+  
+  # Run all scenarios with specific strategies (control + user_review)
+  uv run python scripts/run_injection_scenarios.py --model openrouter/openai/gpt-4o --all --strategies user_review
         """
     )
     
@@ -283,6 +288,11 @@ Examples:
         action="store_true",
         help="Skip control conditions (no injection baseline)"
     )
+    parser.add_argument(
+        "--strategies",
+        type=str,
+        help="Comma-separated list of strategies to run (e.g., 'chat_log,user_review'). Defaults to all strategies."
+    )
     
     args = parser.parse_args()
     
@@ -300,8 +310,18 @@ Examples:
     # Determine what to run
     include_control = not args.no_control
     
+    # Parse strategies if provided
+    strategies = None
+    if args.strategies:
+        strategies = [s.strip() for s in args.strategies.split(",")]
+        # Validate strategies
+        for st in strategies:
+            if st not in INJECTION_STRATEGIES:
+                print(f"Error: Unknown strategy '{st}'. Available: {INJECTION_STRATEGIES}")
+                sys.exit(1)
+    
     if args.all:
-        run_all(args.model, include_control)
+        run_all(args.model, include_control, strategies)
     elif args.scenarios:
         scenario_ids = [s.strip() for s in args.scenarios.split(",")]
         # Validate scenario IDs
@@ -310,7 +330,7 @@ Examples:
                 print(f"Error: Unknown scenario '{sid}'")
                 list_scenarios()
                 sys.exit(1)
-        run_scenarios(args.model, scenario_ids, include_control)
+        run_scenarios(args.model, scenario_ids, include_control, strategies)
     elif args.scenario:
         if args.scenario not in SCENARIOS:
             print(f"Error: Unknown scenario '{args.scenario}'")
